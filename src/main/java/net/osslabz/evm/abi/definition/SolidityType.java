@@ -15,9 +15,11 @@ import java.util.List;
 
 public abstract class SolidityType {
     private final static int Int32Size = 32;
+    private static final java.util.regex.Pattern INT_PATTERN = java.util.regex.Pattern.compile("int(\\d+)");
+    private static final java.util.regex.Pattern UINT_PATTERN = java.util.regex.Pattern.compile("uint(\\d+)");
     /**
      * -- GETTER --
-     *  The type name as it was specified in the interface description
+     * The type name as it was specified in the interface description
      */
     protected String name;
 
@@ -29,8 +31,26 @@ public abstract class SolidityType {
     public static SolidityType getType(String typeName) {
         if (typeName.endsWith("]")) return ArrayType.getType(typeName);
         if ("bool".equals(typeName)) return new BoolType();
-        if (typeName.startsWith("int")) return new IntType(typeName);
-        if (typeName.startsWith("uint")) return new UnsignedIntType(typeName);
+        if (typeName.startsWith("int")) {
+            java.util.regex.Matcher matcher = INT_PATTERN.matcher(typeName);
+            if (matcher.matches()) {
+                int size = Integer.parseInt(matcher.group(1));
+                if (size % 8 != 0) {
+                    throw new RuntimeException("Invalid int size: " + size);
+                }
+                return new IntType(typeName, size / 8);
+            }
+        }
+        if (typeName.startsWith("uint")) {
+            java.util.regex.Matcher matcher = UINT_PATTERN.matcher(typeName);
+            if (matcher.matches()) {
+                int size = Integer.parseInt(matcher.group(1));
+                if (size % 8 != 0) {
+                    throw new RuntimeException("Invalid uint size: " + size);
+                }
+                return new UnsignedIntType(typeName, size / 8);
+            }
+        }
         if ("address".equals(typeName)) return new AddressType();
         if ("string".equals(typeName)) return new StringType();
         if ("bytes".equals(typeName)) return new BytesType();
@@ -326,7 +346,7 @@ public abstract class SolidityType {
 
     public static class AddressType extends IntType {
         public AddressType() {
-            super("address");
+            super("address", 20);
         }
 
         @Override
@@ -353,8 +373,11 @@ public abstract class SolidityType {
     }
 
     public static abstract class NumericType extends SolidityType {
-        public NumericType(String name) {
+        protected int typeSize;
+
+        public NumericType(String name, int typeSize) {
             super(name);
+            this.typeSize = typeSize;
         }
 
         BigInteger encodeInternal(Object value) {
@@ -384,12 +407,16 @@ public abstract class SolidityType {
     }
 
     public static class IntType extends NumericType {
-        public IntType(String name) {
-            super(name);
+        public IntType(String name, int typeSize) {
+            super(name, typeSize);
         }
 
         public static BigInteger decodeInt(byte[] encoded, int offset) {
             return new BigInteger(Arrays.copyOfRange(encoded, offset, offset + Int32Size));
+        }
+
+        public static BigInteger decodeIntWithSize(byte[] encoded, int offset, int typeSize) {
+            return new BigInteger(Arrays.copyOfRange(encoded, offset + Int32Size - typeSize, offset + Int32Size));
         }
 
         public static byte[] encodeInt(int i) {
@@ -408,7 +435,7 @@ public abstract class SolidityType {
 
         @Override
         public Object decode(byte[] encoded, int offset) {
-            return decodeInt(encoded, offset);
+            return decodeIntWithSize(encoded, offset, typeSize);
         }
 
         @Override
@@ -419,12 +446,16 @@ public abstract class SolidityType {
     }
 
     public static class UnsignedIntType extends NumericType {
-        public UnsignedIntType(String name) {
-            super(name);
+        public UnsignedIntType(String name, int typeSize) {
+            super(name,typeSize);
         }
 
         public static BigInteger decodeInt(byte[] encoded, int offset) {
             return new BigInteger(1, Arrays.copyOfRange(encoded, offset, offset + Int32Size));
+        }
+
+        public static BigInteger decodeIntWithSize(byte[] encoded, int offset, int typeSize) {
+            return new BigInteger(Arrays.copyOfRange(encoded, offset + Int32Size - typeSize, offset + Int32Size));
         }
 
         public static byte[] encodeInt(int i) {
@@ -452,13 +483,13 @@ public abstract class SolidityType {
 
         @Override
         public Object decode(byte[] encoded, int offset) {
-            return decodeInt(encoded, offset);
+            return decodeIntWithSize(encoded, offset, typeSize);
         }
     }
 
     public static class BoolType extends IntType {
         public BoolType() {
-            super("bool");
+            super("bool", 32); // all bits are significant for booleans
         }
 
         @Override
@@ -497,7 +528,7 @@ public abstract class SolidityType {
             }
         }
 
-        private boolean containsDynamicTypes(){
+        private boolean containsDynamicTypes() {
             return types.stream().anyMatch(SolidityType::isDynamicType);
         }
 

@@ -207,6 +207,44 @@ public class AbiDecoderTest {
     }
 
     @Test
+    public void testDecodeFunctionCallUniswapV3SwapNotWellFormedInt24() throws IOException {
+
+        File abiJson = new File(this.getClass().getResource("/abiFiles/UniswapV3Pool.json").getPath());
+        AbiDecoder uniswapv3 = new AbiDecoder(abiJson.getAbsolutePath());
+
+        // https://etherscan.io/tx/0x06aeaaac912a4e0f23263f2eac94442dd0027aabb60a898309c24d009a30da86
+        String inputData = "0x3c8a7d8d" +
+                "00000000000000000000000000df657aa9a100a600001700004a00359a639f47" + // recipient (address)
+                "00000000000000000000000BAD00000000000000000000000000000000fd92e8" + // tickLower (int24) + BAD for a higher overflow
+                "0000000000000000000000000000000000000000000000000000000000fd9478" + // tickUpper (int24)
+                "00000000000000000000000BAD00000000000000000053b23162000000000000" + // amount (uint128)  + BAD for a higher overflow
+                "00000000000000000000000000000000000000000000000000000000000000a0" + // data (160: offset after selector)
+                "0000000000000000000000000000000000000000000000000000000000000060" + // data (96: data size)
+                "000000000000000000000000594daad7d77592a2b97b725a7ad59d7e188b5bfa" + // data
+                "000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" + // data
+                "0000000000000000000000000000000000000000000000000000000000002710";  // data
+
+        DecodedFunctionCall decodedFunctionCall = uniswapv3.decodeFunctionCall(inputData);
+
+        log.debug("function: {}", decodedFunctionCall.getName());
+        int p = 0;
+        for (DecodedFunctionCall.Param param : decodedFunctionCall.getParams()) {
+            log.debug("param {}: name={}, type={}, value={}", p, param.getName(), param.getType(), param.getValue());
+            p++;
+        }
+
+        DecodedFunctionCall.Param tickLower = decodedFunctionCall.getParam("tickLower");
+        DecodedFunctionCall.Param tickUpper = decodedFunctionCall.getParam("tickUpper");
+        DecodedFunctionCall.Param amount = decodedFunctionCall.getParam("amount");
+        Assertions.assertEquals("int24", tickLower.getType());
+        Assertions.assertEquals("int24", tickUpper.getType());
+        Assertions.assertEquals("uint128", amount.getType());
+        Assertions.assertEquals(BigInteger.valueOf(-159000), tickLower.getValue());
+        Assertions.assertEquals(BigInteger.valueOf(-158600), tickUpper.getValue());
+        Assertions.assertEquals(new BigInteger("395243496929956429037568"), amount.getValue());
+    }
+
+    @Test
     public void testDecodeFunctionCallTupleContainingDynamicTypes() throws IOException {
 
         // https://api-testnet.bscscan.com/api?module=contract&action=getabi&address=0xb7564227245bb161ebf4d350e1056c26801f1366&format=raw
