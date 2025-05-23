@@ -144,6 +144,110 @@ public class AbiDecoderTest {
     }
 
     @Test
+    public void testDecodeFunctionCallUniswapV3SwapNotWellFormedAddress() throws IOException {
+
+        File abiJson = new File(this.getClass().getResource("/abiFiles/UniswapV3Pool.json").getPath());
+        AbiDecoder uniswapv3 = new AbiDecoder(abiJson.getAbsolutePath());
+
+        // https://etherscan.io/tx/0xe43e45fa0a69fc5b758383c55332bd702b8147ab6259de7794f82e299169c579
+        String inputData = "0x128acb08" +
+                "000000000000000000019920065bab2a988c896c9e765a586dca998b673f4791" + // recipient (address)
+                "0000000000000000000000000000000000000000000000000000000000000000" + // zeroForOne (bool)
+                "000000000000000000000000000000000000000000000000016345785d8a0000" + // amountSpecified (int256)
+                "000000000000000000000000fffd8963efd1fc6a506488495d951d5263988d25" + // sqrtPriceLimitX96 (uint160)
+                "00000000000000000000000000000000000000000000000000000000000000a0" + // data (160: offset after selector)
+                "0000000000000000000000000000000000000000000000000000000000000020" + // data (32: data size)
+                "0000000000000000000000007d0ccaa3fac1e5a943c5168b6ced828691b46b36";  // data
+        DecodedFunctionCall decodedFunctionCall = uniswapv3.decodeFunctionCall(inputData);
+
+        log.debug("function: {}", decodedFunctionCall.getName());
+        int p = 0;
+        for (DecodedFunctionCall.Param param : decodedFunctionCall.getParams()) {
+            log.debug("param {}: name={}, type={}, value={}", p, param.getName(), param.getType(), param.getValue());
+            p++;
+        }
+
+        DecodedFunctionCall.Param recipient = decodedFunctionCall.getParam("recipient");
+        DecodedFunctionCall.Param sqrtPriceLimitX96 = decodedFunctionCall.getParam("sqrtPriceLimitX96");
+        Assertions.assertEquals("address", recipient.getType());
+        Assertions.assertEquals("0x065bab2a988c896c9e765a586dca998b673f4791", recipient.getValue());
+        Assertions.assertEquals("uint160", sqrtPriceLimitX96.getType());
+        Assertions.assertEquals(new BigInteger("1461446703485210103287273052203988822378723970341"), sqrtPriceLimitX96.getValue());
+    }
+
+    @Test
+    public void testDecodeFunctionCallUniswapV3SwapNotWellFormedBool() throws IOException {
+
+        File abiJson = new File(this.getClass().getResource("/abiFiles/UniswapV3Pool.json").getPath());
+        AbiDecoder uniswapv3 = new AbiDecoder(abiJson.getAbsolutePath());
+
+        // https://etherscan.io/tx/0x2b0b2269267344b70b7daffc32554cb82a3c5f191488a992c2c4e38b37563e74
+        String inputData = "0x128acb08" +
+                "0000000000000000000000001891201d52f3ca63a5a9e771bd81477a65e01d7a" + // recipient (address)
+                "0BAD000000000000000000000000000000000000000000000000000000000000" + // zeroForOne (bool)
+                "fffffffffffffffffffffffffffffffffffffffffffffffff041e155f56bd1ec" + // amountSpecified (int256)
+                "00000000000000000000000000000000000000000000000000000001000276a4" + // sqrtPriceLimitX96 (uint160)
+                "00000000000000000000000000000000000000000000000000000000000000a0" + // data (160: offset after selector)
+                "0000000000000000000000000000000000000000000000000000000000000082" + // data (130: data size)
+                "a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48c02aaa39b223fe8d0a0e5c4f" + // data
+                "27ead9083c756cc201f4000000580000000000000f6b9f9c42ddb4eecf4236db" + // data
+                "746dbc1855a4d095aaf58da9b030491e000000000311ab03b27cf6e60434005f" + // data
+                "a9569b0ed6aa01e234468e6a15b77988b950df000000000000000000012b23cf" + // data
+                "6f01";
+
+        DecodedFunctionCall decodedFunctionCall = uniswapv3.decodeFunctionCall(inputData);
+
+        log.debug("function: {}", decodedFunctionCall.getName());
+        int p = 0;
+        for (DecodedFunctionCall.Param param : decodedFunctionCall.getParams()) {
+            log.debug("param {}: name={}, type={}, value={}", p, param.getName(), param.getType(), param.getValue());
+            p++;
+        }
+
+        DecodedFunctionCall.Param zeroForOne = decodedFunctionCall.getParam("zeroForOne");
+        Assertions.assertEquals("bool", zeroForOne.getType());
+        Assertions.assertEquals(true, zeroForOne.getValue());
+    }
+
+    @Test
+    public void testDecodeFunctionCallUniswapV3SwapNotWellFormedInt24() throws IOException {
+
+        File abiJson = new File(this.getClass().getResource("/abiFiles/UniswapV3Pool.json").getPath());
+        AbiDecoder uniswapv3 = new AbiDecoder(abiJson.getAbsolutePath());
+
+        // https://etherscan.io/tx/0x06aeaaac912a4e0f23263f2eac94442dd0027aabb60a898309c24d009a30da86
+        String inputData = "0x3c8a7d8d" +
+                "00000000000000000000000000df657aa9a100a600001700004a00359a639f47" + // recipient (address)
+                "00000000000000000000000BAD00000000000000000000000000000000fd92e8" + // tickLower (int24) + BAD for a higher overflow
+                "0000000000000000000000000000000000000000000000000000000000fd9478" + // tickUpper (int24)
+                "00000000000000000000000BAD00000000000000000053b23162000000000000" + // amount (uint128)  + BAD for a higher overflow
+                "00000000000000000000000000000000000000000000000000000000000000a0" + // data (160: offset after selector)
+                "0000000000000000000000000000000000000000000000000000000000000060" + // data (96: data size)
+                "000000000000000000000000594daad7d77592a2b97b725a7ad59d7e188b5bfa" + // data
+                "000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" + // data
+                "0000000000000000000000000000000000000000000000000000000000002710";  // data
+
+        DecodedFunctionCall decodedFunctionCall = uniswapv3.decodeFunctionCall(inputData);
+
+        log.debug("function: {}", decodedFunctionCall.getName());
+        int p = 0;
+        for (DecodedFunctionCall.Param param : decodedFunctionCall.getParams()) {
+            log.debug("param {}: name={}, type={}, value={}", p, param.getName(), param.getType(), param.getValue());
+            p++;
+        }
+
+        DecodedFunctionCall.Param tickLower = decodedFunctionCall.getParam("tickLower");
+        DecodedFunctionCall.Param tickUpper = decodedFunctionCall.getParam("tickUpper");
+        DecodedFunctionCall.Param amount = decodedFunctionCall.getParam("amount");
+        Assertions.assertEquals("int24", tickLower.getType());
+        Assertions.assertEquals("int24", tickUpper.getType());
+        Assertions.assertEquals("uint128", amount.getType());
+        Assertions.assertEquals(BigInteger.valueOf(-159000), tickLower.getValue());
+        Assertions.assertEquals(BigInteger.valueOf(-158600), tickUpper.getValue());
+        Assertions.assertEquals(new BigInteger("395243496929956429037568"), amount.getValue());
+    }
+
+    @Test
     public void testDecodeFunctionCallTupleContainingDynamicTypes() throws IOException {
 
         // https://api-testnet.bscscan.com/api?module=contract&action=getabi&address=0xb7564227245bb161ebf4d350e1056c26801f1366&format=raw
