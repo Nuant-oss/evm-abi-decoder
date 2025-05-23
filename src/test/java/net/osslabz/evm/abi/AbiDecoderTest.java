@@ -168,8 +168,11 @@ public class AbiDecoderTest {
         }
 
         DecodedFunctionCall.Param recipient = decodedFunctionCall.getParam("recipient");
+        DecodedFunctionCall.Param sqrtPriceLimitX96 = decodedFunctionCall.getParam("sqrtPriceLimitX96");
         Assertions.assertEquals("address", recipient.getType());
         Assertions.assertEquals("0x065bab2a988c896c9e765a586dca998b673f4791", recipient.getValue());
+        Assertions.assertEquals("uint160", sqrtPriceLimitX96.getType());
+        Assertions.assertEquals(new BigInteger("1461446703485210103287273052203988822378723970341"), sqrtPriceLimitX96.getValue());
     }
 
     @Test

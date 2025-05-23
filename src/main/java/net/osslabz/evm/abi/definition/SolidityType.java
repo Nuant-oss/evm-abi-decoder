@@ -454,7 +454,7 @@ public abstract class SolidityType {
         }
 
         public static BigInteger decodeIntWithSize(byte[] encoded, int offset, int typeSize) {
-            return new BigInteger(Arrays.copyOfRange(encoded, offset + Int32Size - typeSize, offset + Int32Size));
+            return new BigInteger(1, Arrays.copyOfRange(encoded, offset + Int32Size - typeSize, offset + Int32Size));
         }
 
         public static byte[] encodeInt(int i) {
